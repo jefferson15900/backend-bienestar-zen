@@ -10,8 +10,26 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
+// --- CONFIGURACIÓN DE CORS PARA PRODUCCIÓN ---
+// Lista de orígenes (dominios) que tienen permiso para hacer peticiones a esta API
+const allowedOrigins = [
+  'https://bienestarzen.vercel.app', // Tu frontend en Vercel
+  'http://localhost:5173'             // Tu frontend en desarrollo local
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Permite peticiones si el origen está en la lista de permitidos o si no hay origen (ej. Postman)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+};
+
 // Middlewares
-app.use(cors());
+app.use(cors(corsOptions)); // Usamos las opciones de CORS que definimos arriba
 app.use(express.json());
 
 // Inicialización del cliente de Gemini
@@ -94,14 +112,14 @@ app.get('/api/healthy-recipes', async (req, res) => {
 });
 
 // --- ENDPOINT CORREGIDO PARA DETALLE DE RECETA ---
-app.get('/api/recipes/:id', async (req, res) => { // <-- RUTA CORREGIDA A PLURAL
+app.get('/api/recipes/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const apiUrl = `https://www.themealdb.com/api/json/v1/1/lookup.php?i=${id}`;
     const apiResponse = await fetch(apiUrl);
     if (!apiResponse.ok) throw new Error('No se pudo obtener el detalle de la receta.');
     const data = await apiResponse.json();
-    const meal = data.meals ? data.meals[0] : null; // Verificación de seguridad
+    const meal = data.meals ? data.meals[0] : null;
     if (!meal) return res.status(404).json({ error: 'Receta no encontrada.' });
 
     const ingredients = [];
